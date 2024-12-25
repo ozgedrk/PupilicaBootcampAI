@@ -168,12 +168,102 @@ sayisal_degisken = ["yas","boy","kilo"]
 for degisken in sayisal_degisken:
     plotBox(degisken)
 
+# %%  Kategorik Degiskenler
+
+def plotBar(degisken, n = 5): # EN COK 5 ADET VERIYI GORSELLESTIR
+    
+    veri_ = veri[degisken]
+    # value counts
+    veri_sayma = veri_.value_counts() # value counts
+    veri_sayma = veri_sayma[:n]
+    
+    plt.figure()
+    plt.bar(veri_sayma.index, veri_sayma, color = "orange")
+    plt.xticks(veri_sayma.index ,veri_sayma.index.values)
+    plt.xticks(rotation = 45)
+    plt.ylabel("Frekans")
+    plt.title(f"Veri Frekansi : {degisken}")
+    plt.show()
+    print(f"{veri_sayma}")
+    
+# Dataframe icerisinde istenilen tipteki degiskenleri bul
+categorical_columns = veri.select_dtypes(include = ["object"]).columns
+
+for degisken in categorical_columns:
+    plotBar(degisken, 10)
+
+# %%  IKI DEGISKENLI VERI ANALIZI
+
+# Cinsiyete gore boy ve kilo karsilastirmasi.
+import pandas as pd
+erkek = veri[veri.cinsiyet == "M"]
+kadin = veri[veri.cinsiyet == "F"]
 
 
+plt.figure()
+plt.scatter(kadin.boy, kadin.kilo, alpha = 0.8, label = "Kadin")
+plt.scatter(erkek.boy, erkek.kilo, alpha = 0.1, label = "Erkek")
+plt.xlabel("Boy")
+plt.ylabel("Kilo")
+plt.title("Boy ve Kilo Arasindaki Iliski")
+plt.legend()
+
+# correlation calculation
+numeric_correlation = veri.loc[:, ["yas","boy","kilo"]].corr()
+
+# madalya ve yas arasindaki correlation
+veri_gecici = veri.copy()
+veri_gecici = pd.get_dummies(veri_gecici, columns = ["madalya"])
+numeric_correlation_yas_madalya = veri_gecici.loc[:, ["yas",'madalya_Gold','madalya_Bronze','madalya_Silver']].corr()
+
+# Takimlarin kazandiklari altin gumus ve bronz madalya sayilari
+# Group By
+veri_gecici["takim"] = veri_gecici["takim"].replace({
+    "Soviet Union": "Russia"})
+groupby_takim = veri_gecici[["takim","madalya_Gold","madalya_Silver","madalya_Bronze"]].groupby(["takim"], as_index = False).sum()
+groupby_takim_sorted = groupby_takim.sort_values(by = "madalya_Gold", ascending = False)
+groupby_takim_sorted_20 = groupby_takim_sorted[:20]
 
 
+turkey = groupby_takim.query("takim == 'Turkey'") # Sadece Turkiyeyi filtreleme
+
+# Kazanilan madalyalarin sehirlere gore ortalamalari
+
+groupby_sehir = veri_gecici[["sehir","madalya_Bronze","madalya_Gold","madalya_Silver"]].groupby("sehir").sum().sort_values(by = "madalya_Gold", ascending = False)
+
+# Kazanilan madalyalarin cinsiyete gore ortalamalari
+
+groupby_cinsiyet = veri_gecici[["cinsiyet","madalya_Bronze","madalya_Gold","madalya_Silver"]].groupby("cinsiyet").sum().sort_values(by = "madalya_Gold", ascending = False)
+
+# %% COK DEGISKENLI VERI ANALIZI
+
+# Pivot table
+# Madalya alan sporcularin cinsiyetlerine gore boy, kilo ve yas ort bakalim.
+# 3 adet madalya, 2(cinsiyet)*3(boy,kilo,yas)*3(mean,max,min) = 18
+veri_pivot = veri.pivot_table(index = "madalya",
+                              columns = "cinsiyet",
+                              values = ["boy","kilo","yas"],
+                              aggfunc = {"boy": np.mean,
+                                         "kilo": [np.median,np.max,np.min],
+                                         "yas": [np.min,np.max,np.std]})
+
+# Takimlara ve cinsiyete gore alinan madalya sayilarinin toplami, max ve min degerleri
 
 
+#takımlara ve cinsiyete gore alınan madalya sayıların toplamı ve maks ve min değeleri
+
+veri_pivot_takim = veri_gecici.pivot_table(index="takim", columns = "cinsiyet",
+                                           values=["madalya_Gold","madalya_Silver","madalya_Bronze"],
+                                           aggfunc={"madalya_Gold":[np.sum],
+                                                    "madalya_Silver":[np.sum],
+                                                    "madalya_Bronze":[np.sum]})
+
+veri_pivot_takim["total"] = (
+    veri_pivot_takim["madalya_Gold"].sum(axis = 1) +
+    veri_pivot_takim["madalya_Broze"].sum(axis = 1) +
+    veri_pivot_takim["madalya_Silver"].sum(axis = 1))
+
+veri_pivot_takim = veri_pivot_takim.sort_values(by = "total", ascending = False)[:100]
 
 
 
