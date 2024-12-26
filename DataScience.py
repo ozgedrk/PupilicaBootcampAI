@@ -252,7 +252,7 @@ veri_pivot = veri.pivot_table(index = "madalya",
 
 #takımlara ve cinsiyete gore alınan madalya sayıların toplamı ve maks ve min değeleri
 
-veri_pivot_takim = veri_gecici.pivot_table(index="takim", columns = "cinsiyet",
+veri_pivot_takim = veri_gecici.pivot_table(index=["takim","sehir"], columns = ["cinsiyet","sezon"],
                                            values=["madalya_Gold","madalya_Silver","madalya_Bronze"],
                                            aggfunc={"madalya_Gold":[np.sum],
                                                     "madalya_Silver":[np.sum],
@@ -260,30 +260,61 @@ veri_pivot_takim = veri_gecici.pivot_table(index="takim", columns = "cinsiyet",
 
 veri_pivot_takim["total"] = (
     veri_pivot_takim["madalya_Gold"].sum(axis = 1) +
-    veri_pivot_takim["madalya_Broze"].sum(axis = 1) +
+    veri_pivot_takim["madalya_Bronze"].sum(axis = 1) +
     veri_pivot_takim["madalya_Silver"].sum(axis = 1))
 
 veri_pivot_takim = veri_pivot_takim.sort_values(by = "total", ascending = False)[:100]
 
+veri_pivot_takim.to_excel("veri_pivot_takim.xlsx")
 
 
+# %% OUTLIER DETECTION
+
+from collections import Counter
+
+def anomaliTespiti(df, ozellik = ["yas", "kilo", "boy"]):
+    
+    outlier_indices = []
+    for c in ozellik:    
+        # 1. Ceyrek
+        Q1 = np.percentile(df[c], 25)
+
+        # 3. Ceyrek
+        Q3 = np.percentile(df[c], 75)
+        
+        # Ceyrekler acikligi
+        IQR = Q3 - Q1
+    
+        # Aykiri deger tespiti icin IQR degerinin bir carpan ile carpilmasi
+        outlier_step = 1.5 * IQR
+        
+        # Ust sinir bu sinirin ustunde kalan degerler outlier
+        ust_sinir = Q3 + outlier_step
+        
+        # Alt sinir bu sinirin altinda kalan degerler outlier
+        alt_sinir = Q1 - outlier_step
+        
+        # Outlier degerlerinin indexlerinin tespiti
+        outlier_list_col = df[(df[c] < alt_sinir ) | (df[c] > ust_sinir)].index
+       # Extend veri listesinin icine ekleme yani append yapiyor
+        outlier_indices.extend(outlier_list_col)
+    
+    
+# Unique aykiri degerlerin tespiti
+    outlier_indices = Counter(outlier_indices)
+# Eger bir ornekherhangi bir column icin outlier ise bunu veri setinden temizle
+    outliers = list(i for i, v in outlier_indices.items() if v > 1)
+    return outliers
+ 
+veri_anomali = veri.loc[anomaliTespiti(veri, ["yas","kilo","boy"])]
+anomali_spor = veri_anomali.spor.value_counts()
+anomali_etkinlik = veri_anomali.etkinlik.value_counts()
 
 
+plt.figure()
+plt.bar(anomali_spor.index, anomali_spor.values)
+plt.xticks(rotation = 30)
 
+anomali_index_list =  veri_anomali.index.tolist()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+veri_cleaned = veri.drop(index = anomali_index_list)
