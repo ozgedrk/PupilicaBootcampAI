@@ -48,10 +48,14 @@ plt.figure(figsize = (15,10))
 plot_tree(tree_clf, filled = True, feature_names = iris.feature_names, class_names = iris.target_names)
 
 
+feature_importances = tree_clf.feature_importances_
 
+feature_names = iris.feature_names
 
+feature_importance_sorted = sorted(zip(feature_importances,feature_names), reverse = True)
 
-
+for importance, feature_name in feature_importance_sorted:
+    print(f"{feature_name} : {importance}")
 
 
 
